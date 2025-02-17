@@ -27,12 +27,45 @@ if __name__ == "__main__":
 # DATA
 # loaded_data = torch.load(data_dir)
 #
+# data_tr = pd.concat(
+#     [
+#         pd.read_csv(f"{data_dir}/1_{tr_label}.csv"),
+#         pd.read_csv(f"{data_dir}/2_{tr_label}.csv"),
+#         pd.read_csv(f"{data_dir}/3_{tr_label}.csv"),
+#         pd.read_csv(f"{data_dir}/labels_{tr_label}.csv"),
+#     ],
+#     axis=1,
+# )
+# tr_omic = torch.tensor(data_tr.iloc[:, :-1].values, dtype=torch.float32)
+# tr_labels = torch.tensor(data_tr.iloc[:, -1].values, dtype=torch.long)
+# data_te = pd.concat(
+#     [
+#         pd.read_csv(f"{data_dir}/1_{te_label}.csv"),
+#         pd.read_csv(f"{data_dir}/2_{te_label}.csv"),
+#         pd.read_csv(f"{data_dir}/3_{te_label}.csv"),
+#         pd.read_csv(f"{data_dir}/labels_{te_label}.csv"),
+#     ],
+#     axis=1,
+# )
+# te_omic = torch.tensor(data_te.iloc[:, :-1].values, dtype=torch.float32)
+# te_labels = torch.tensor(data_te.iloc[:, -1].values, dtype=torch.long)
+# exp_adj1 = torch.tensor(
+#     pd.read_csv(f"{data_dir}/adj1.csv", header=0, index_col=0).values, dtype=torch.float32
+# )
+# exp_adj2 = torch.tensor(
+#     pd.read_csv(f"{data_dir}/adj2.csv", header=0, index_col=0).values, dtype=torch.float32
+# )
+# exp_adj3 = torch.tensor(
+#     pd.read_csv(f"{data_dir}/adj3.csv", header=0, index_col=0).values, dtype=torch.float32
+# )
+
+
 data_tr = pd.concat(
     [
-        pd.read_csv(f"{data_dir}/1_{tr_label}.csv"),
-        pd.read_csv(f"{data_dir}/2_{tr_label}.csv"),
-        pd.read_csv(f"{data_dir}/3_{tr_label}.csv"),
-        pd.read_csv(f"{data_dir}/labels_{tr_label}.csv"),
+        pd.read_csv(f"{data_dir}/1_{tr_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/2_{tr_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/3_{tr_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/labels_{tr_label}.csv").iloc[:, :200],
     ],
     axis=1,
 )
@@ -40,24 +73,25 @@ tr_omic = torch.tensor(data_tr.iloc[:, :-1].values, dtype=torch.float32)
 tr_labels = torch.tensor(data_tr.iloc[:, -1].values, dtype=torch.long)
 data_te = pd.concat(
     [
-        pd.read_csv(f"{data_dir}/1_{te_label}.csv"),
-        pd.read_csv(f"{data_dir}/2_{te_label}.csv"),
-        pd.read_csv(f"{data_dir}/3_{te_label}.csv"),
-        pd.read_csv(f"{data_dir}/labels_{te_label}.csv"),
+        pd.read_csv(f"{data_dir}/1_{te_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/2_{te_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/3_{te_label}.csv").iloc[:, :200],
+        pd.read_csv(f"{data_dir}/labels_{te_label}.csv").iloc[:, :200],
     ],
     axis=1,
 )
 te_omic = torch.tensor(data_te.iloc[:, :-1].values, dtype=torch.float32)
 te_labels = torch.tensor(data_te.iloc[:, -1].values, dtype=torch.long)
 exp_adj1 = torch.tensor(
-    pd.read_csv(f"{data_dir}/adj1.csv", header=0, index_col=0).values, dtype=torch.float32
+    pd.read_csv(f"{data_dir}/adj1.csv", header=0, index_col=0).iloc[:200, :200].values, dtype=torch.float32
 )
 exp_adj2 = torch.tensor(
-    pd.read_csv(f"{data_dir}/adj2.csv", header=0, index_col=0).values, dtype=torch.float32
+    pd.read_csv(f"{data_dir}/adj2.csv", header=0, index_col=0).iloc[:200, :200].values, dtype=torch.float32
 )
 exp_adj3 = torch.tensor(
-    pd.read_csv(f"{data_dir}/adj3.csv", header=0, index_col=0).values, dtype=torch.float32
+    pd.read_csv(f"{data_dir}/adj3.csv", header=0, index_col=0).iloc[:200, :200].values, dtype=torch.float32
 )
+
 # DATA LOADRE
 tr_dataset = torch.utils.data.TensorDataset(tr_omic, tr_labels)
 tr_data_loader = torch.utils.data.DataLoader(
@@ -78,7 +112,7 @@ loss_function = nn.CrossEntropyLoss()
 input_in_dim = [exp_adj1.shape[0], exp_adj2.shape[0], exp_adj3.shape[0]]
 input_hidden_dim = [64]
 network = Fusion(
-    num_class=2,
+    num_class=4,
     num_views=3,
     hidden_dim=input_hidden_dim,
     dropout=0.1,
@@ -102,10 +136,9 @@ test_acc_all = []
 
 # Early Stopping
 early_stopping_counter = 0
-gc.collect()
-torch.cuda.empty_cache()
 
 for epoch in range(0, num_epochs):
+    print(" Epoch {}/{}".format(epoch, num_epochs - 1))
     isPrint = epoch % 100 == 0
     # Print epoch
     if isPrint:
@@ -131,14 +164,13 @@ for epoch in range(0, num_epochs):
         batch_x2 = batch_x2.to(torch.float32)
         batch_x3 = batch_x3.to(torch.float32)
         targets = targets.long()
-        batch_x1 = batch_x1.to(device, non_blocking=True)
-        batch_x2 = batch_x2.to(device, non_blocking=True)
-        batch_x3 = batch_x3.to(device, non_blocking=True)
-        targets = targets.to(device, non_blocking=True)
-        exp_adj1_device = exp_adj1.to(device, non_blocking=True)
-        exp_adj2_device = exp_adj2.to(device, non_blocking=True)
-        exp_adj3_device = exp_adj3.to(device, non_blocking=True)
-
+        batch_x1 = batch_x1.to(device)
+        batch_x2 = batch_x2.to(device)
+        batch_x3 = batch_x3.to(device)
+        targets = targets.to(device)
+        exp_adj1 = exp_adj1.to(device)
+        exp_adj2 = exp_adj2.to(device)
+        exp_adj3 = exp_adj3.to(device)
 
         optimizer.zero_grad()
         (
@@ -150,7 +182,7 @@ for epoch in range(0, num_epochs):
             output1,
             output2,
             output3,
-        ) = network(batch_x1, batch_x2, batch_x3, exp_adj1_device, exp_adj2_device, exp_adj3_device, targets)
+        ) = network(batch_x1, batch_x2, batch_x3, exp_adj1, exp_adj2, exp_adj3, targets)
         tr_prob = F.softmax(tr_logits, dim=1)
         tr_pre_lab = torch.argmax(tr_prob, 1)
 
@@ -162,54 +194,43 @@ for epoch in range(0, num_epochs):
         train_corrects += torch.sum(tr_pre_lab == targets.data)
         train_num += batch_x1.size(0)
         
-        # Free unused memory after each batch
-        del batch_x, batch_x1, batch_x2, batch_x3, targets, loss_fusion, tr_logits
-        del exp_adj1_device, exp_adj2_device, exp_adj3_device
-        torch.cuda.empty_cache()
-        gc.collect()
-        
-    # Evaluationfor this fold
+    # Evaluation for this fold
     network.eval()
     test_loss = 0.0
     test_corrects = 0
     test_num = 0
-    with torch.no_grad():
-        for i, data in enumerate(te_data_loader, 0):
-            batch_x, targets = data
-            batch_x1 = batch_x[:, : input_in_dim[0]].reshape(-1, input_in_dim[0], 1)
-            batch_x2 = batch_x[:, input_in_dim[0] : -input_in_dim[2]].reshape(
-                -1, input_in_dim[1], 1
-            )
-            batch_x3 = batch_x[:, -input_in_dim[2] :].reshape(-1, input_in_dim[2], 1)
-            batch_x1 = batch_x1.to(torch.float32)
-            batch_x2 = batch_x2.to(torch.float32)
-            batch_x3 = batch_x3.to(torch.float32)
-            targets = targets.long()
-            batch_x1 = batch_x1.to(device, non_blocking=True)
-            batch_x2 = batch_x2.to(device, non_blocking=True)
-            batch_x3 = batch_x3.to(device, non_blocking=True)
-            targets = targets.to(device, non_blocking=True)
-            exp_adj1_device = exp_adj1.to(device, non_blocking=True)
-            exp_adj2_device = exp_adj2.to(device, non_blocking=True)
-            exp_adj3_device = exp_adj3.to(device, non_blocking=True)
+    for i, data in enumerate(te_data_loader, 0):
+        batch_x, targets = data
+        batch_x1 = batch_x[:, : input_in_dim[0]].reshape(-1, input_in_dim[0], 1)
+        batch_x2 = batch_x[:, input_in_dim[0] : -input_in_dim[2]].reshape(
+            -1, input_in_dim[1], 1
+        )
+        batch_x3 = batch_x[:, -input_in_dim[2] :].reshape(-1, input_in_dim[2], 1)
+        batch_x1 = batch_x1.to(torch.float32)
+        batch_x2 = batch_x2.to(torch.float32)
+        batch_x3 = batch_x3.to(torch.float32)
+        targets = targets.long()
+        batch_x1 = batch_x1.to(device)
+        batch_x2 = batch_x2.to(device)
+        batch_x3 = batch_x3.to(device)
+        targets = targets.to(device)
+        exp_adj1 = exp_adj1.to(device)
+        exp_adj2 = exp_adj2.to(device)
+        exp_adj3 = exp_adj3.to(device)
 
-            te_logits = network.infer(
-                batch_x1, batch_x2, batch_x3, exp_adj1_device, exp_adj2_device, exp_adj3_device
-            )
-            te_prob = F.softmax(te_logits, dim=1)
-            te_pre_lab = torch.argmax(te_prob, 1)
+        te_logits = network.infer(
+            batch_x1, batch_x2, batch_x3, exp_adj1, exp_adj2, exp_adj3
+        )
+        te_prob = F.softmax(te_logits, dim=1)
+        te_pre_lab = torch.argmax(te_prob, 1)
 
-            test_corrects += torch.sum(te_pre_lab == targets.data)
-            test_num += batch_x1.size(0)
-            
-            del batch_x, batch_x1, batch_x2, batch_x3, targets, te_logits, te_pre_lab
-            del exp_adj1_device, exp_adj2_device, exp_adj3_device
-            torch.cuda.empty_cache()
-            gc.collect()
+        test_corrects += torch.sum(te_pre_lab == targets.data)
+        test_num += batch_x1.size(0)
 
     train_loss_all.append(train_loss / train_num)
     train_acc_all.append(train_corrects.double().item() / train_num)
     test_acc_all.append(test_corrects.double().item() / test_num)
+    
     if isPrint:
         print(
             "{} Train Loss : {:.8f} Train ACC : {:.8f}".format(
@@ -237,7 +258,6 @@ for epoch in range(0, num_epochs):
         print(f"Best test accuracy: {best_acc}")
         print(f"Best test epoch: {best_epoch}")
         break
-    
 print("end")
 
 plt.figure(figsize=(30, 15))

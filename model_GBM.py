@@ -159,7 +159,7 @@ class GAT(nn.Module):
         self.fc4.apply(xavier_init)
 
         self.fc5 = nn.Sequential(
-            nn.Linear(self.fc_dim[3], 2))
+            nn.Linear(self.fc_dim[3], 4))
         self.fc5.apply(xavier_init)
 
     def forward(self, x, adj):
